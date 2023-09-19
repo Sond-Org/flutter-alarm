@@ -61,6 +61,18 @@ class AlarmSettings {
   /// Body of the notification to be shown when it's time for [bedtime].
   final String? bedtimeNotificationBody;
 
+  /// Whether to present an action button in the notification for `snooze'.
+  final bool? snooze;
+
+  /// The amount of time to wait before retrigging another alarm when snoozed.
+  final Duration snoozeDuration;
+
+  /// The label for the action button in the notification for `dismiss`.
+  final String? notificationActionDismissLabel;
+
+  /// The label for the action button in the notification for `snooze`.
+  final String? notificationActionSnoozeLabel;
+
   /// Additional data to pass around.
   final Map<String, dynamic>? extra;
 
@@ -83,6 +95,10 @@ class AlarmSettings {
     hash = hash ^ (bedtime?.hashCode ?? 0);
     hash = hash ^ (bedtimeNotificationTitle?.hashCode ?? 0);
     hash = hash ^ (bedtimeNotificationBody?.hashCode ?? 0);
+    hash = hash ^ (snooze?.hashCode ?? 0);
+    hash = hash ^ snoozeDuration.hashCode;
+    hash = hash ^ (notificationActionDismissLabel?.hashCode ?? 0);
+    hash = hash ^ (notificationActionSnoozeLabel?.hashCode ?? 0);
     hash = hash ^ (extra?.hashCode ?? 0);
     hash = hash & 0x3fffffff;
 
@@ -102,6 +118,7 @@ class AlarmSettings {
     this.vibrate = true,
     this.volumeMax = true,
     this.fadeDuration = 0.0,
+    this.snoozeDuration = const Duration(minutes: 5),
     this.notificationTitle,
     this.notificationBody,
     this.enableNotificationOnKill = true,
@@ -109,6 +126,9 @@ class AlarmSettings {
     this.bedtime,
     this.bedtimeNotificationTitle,
     this.bedtimeNotificationBody,
+    this.snooze,
+    this.notificationActionDismissLabel,
+    this.notificationActionSnoozeLabel,
     this.extra,
   });
 
@@ -130,6 +150,12 @@ class AlarmSettings {
             : null,
         bedtimeNotificationTitle: json['bedtimeNotificationTitle'] as String?,
         bedtimeNotificationBody: json['bedtimeNotificationBody'] as String?,
+        snooze: json['snooze'] as bool?,
+        snoozeDuration: Duration(seconds: json['snoozeDuration']),
+        notificationActionDismissLabel:
+            json['notificationActionDismissLabel'] as String?,
+        notificationActionSnoozeLabel:
+            json['notificationActionSnoozeLabel'] as String?,
         extra: json['extra'] as Map<String, dynamic>?,
       );
 
@@ -150,6 +176,10 @@ class AlarmSettings {
     DateTime? bedtime,
     String? bedtimeNotificationTitle,
     String? bedtimeNotificationBody,
+    bool? snooze,
+    Duration? snoozeDuration,
+    String? notificationActionDismissLabel,
+    String? notificationActionSnoozeLabel,
     Map<String, dynamic>? extra,
   }) {
     return AlarmSettings(
@@ -171,6 +201,12 @@ class AlarmSettings {
           bedtimeNotificationTitle ?? this.bedtimeNotificationTitle,
       bedtimeNotificationBody:
           bedtimeNotificationBody ?? this.bedtimeNotificationBody,
+      snooze: snooze ?? this.snooze,
+      snoozeDuration: snoozeDuration ?? this.snoozeDuration,
+      notificationActionDismissLabel:
+          notificationActionDismissLabel ?? this.notificationActionDismissLabel,
+      notificationActionSnoozeLabel:
+          notificationActionSnoozeLabel ?? this.notificationActionSnoozeLabel,
       extra: extra ?? this.extra,
     );
   }
@@ -191,6 +227,10 @@ class AlarmSettings {
         'bedtime': bedtime?.microsecondsSinceEpoch,
         'bedtimeNotificationTitle': bedtimeNotificationTitle,
         'bedtimeNotificationBody': bedtimeNotificationBody,
+        'snooze': snooze,
+        'snoozeDuration': snoozeDuration.inSeconds,
+        'notificationActionDismissLabel': notificationActionDismissLabel,
+        'notificationActionSnoozeLabel': notificationActionSnoozeLabel,
         'extra': extra,
       };
 
@@ -202,6 +242,7 @@ class AlarmSettings {
     json['bedtime'] = json['bedtime'] != null
         ? DateTime.fromMicrosecondsSinceEpoch(json['bedtime'])
         : null;
+    json['snoozeDuration'] = Duration(seconds: json['snoozeDuration']);
 
     return "AlarmSettings: ${json.toString()}";
   }
@@ -226,5 +267,11 @@ class AlarmSettings {
           bedtime == other.bedtime &&
           bedtimeNotificationTitle == other.bedtimeNotificationTitle &&
           bedtimeNotificationBody == other.bedtimeNotificationBody &&
+          snooze == other.snooze &&
+          snoozeDuration == other.snoozeDuration &&
+          notificationActionDismissLabel ==
+              other.notificationActionDismissLabel &&
+          notificationActionSnoozeLabel ==
+              other.notificationActionSnoozeLabel &&
           mapEquals(extra, other.extra);
 }
