@@ -1,76 +1,82 @@
 import 'dart:convert';
 
-import 'package:alarm/alarm.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:alarm/service/alarm.dart';
+import 'package:flutter/services.dart';
 
+/// Provides methods to interact with the native platform for caching alarms.
 class AlarmStorage {
-  static const prefix = '__alarm_id__';
+  static const platform = MethodChannel('com.gdelataillade.alarm/alarm');
+
   static const notificationOnAppKill = 'notificationOnAppKill';
   static const notificationOnAppKillTitle = 'notificationOnAppKillTitle';
   static const notificationOnAppKillBody = 'notificationOnAppKillBody';
 
-  static SharedPreferences? _prefs;
-
-  static Future<SharedPreferences> get prefs async {
-    _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.reload();
-    return _prefs!;
-  }
-
-  static Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-  }
-
   /// Saves alarm info in local storage so we can restore it later
   /// in the case app is terminated.
   static Future<bool> saveAlarm(AlarmSettings alarmSettings) async {
-    alarmPrint('+ Save alarm: $prefix${alarmSettings.id}');
-    return (await prefs).setString(
-      '$prefix${alarmSettings.id}',
-      json.encode(alarmSettings.toJson()),
-    );
+    try {
+      return await platform.invokeMethod('saveAlarm', alarmSettings.toJson());
+    } catch (e) {
+      throw AlarmException('Failed to save alarm ${alarmSettings.id}. $e');
+    }
   }
 
   /// Removes alarm from local storage.
   static Future<bool> unsaveAlarm(int id) async {
-    alarmPrint('- Unsave alarm: $prefix$id');
-    return (await prefs).remove("$prefix$id");
+    try {
+      return await platform.invokeMethod('unsaveAlarm', {'id': id});
+    } catch (e) {
+      throw AlarmException('Failed to unsave alarm $id. $e');
+    }
   }
 
   /// Whether at least one alarm is set.
   static Future<bool> hasAlarm() async {
-    final keys = (await prefs).getKeys();
-
-    for (final key in keys) {
-      if (key.startsWith(prefix)) return true;
+    try {
+      return await platform.invokeMethod('hasAlarm');
+    } catch (e) {
+      throw AlarmException(
+        'Failed to check if there is at least one alarm set. $e',
+      );
     }
-
-    return false;
   }
 
   /// Returns all alarms info from local storage in the case app is terminated
   /// and we need to restore previously scheduled alarms.
   static Future<List<AlarmSettings>> getSavedAlarms() async {
+    late final List<Object?>? rawAlarms;
+    try {
+      rawAlarms = await platform.invokeMethod<List<Object?>>('listAlarms');
+    } catch (e) {
+      throw AlarmException('Failed to list alarms. $e');
+    }
+
+    if (rawAlarms == null || rawAlarms.isEmpty) {
+      return [];
+    }
+
     final alarms = <AlarmSettings>[];
-    final keys = (await prefs).getKeys();
+    for (final rawAlarm in rawAlarms) {
+      if (rawAlarm == null) continue;
+      late final Map<String, dynamic> jsonAlarm;
+      try {
+        jsonAlarm = json.decode(rawAlarm.toString());
+      } catch (e) {
+        alarmPrint(
+          '[STORAGE] Failed to parse alarm as json: $rawAlarm. $e',
+        );
+        continue;
+      }
 
-    for (final key in keys) {
-      if (key.startsWith(prefix)) {
-        final res = (await prefs).getString(key);
-        if (res == null) {
-          continue;
-        }
-
-        try {
-          alarms.add(AlarmSettings.fromJson(json.decode(res)));
-        } catch (e) {
-          alarmPrint(
-            '[STORAGE] Failed to parse alarm $key: $res - removing alarm',
-          );
-          final id = int.tryParse(key.replaceAll(prefix, ''));
-          if (id != null) {
-            unsaveAlarm(id);
-          }
+      try {
+        alarms.add(AlarmSettings.fromJson(jsonAlarm));
+      } catch (e) {
+        alarmPrint(
+          '[STORAGE] Failed to parse alarm $rawAlarm - removing alarm from storage. $e',
+        );
+        final id = jsonAlarm['id'];
+        if (id != null) {
+          unsaveAlarm(id);
         }
       }
     }
@@ -79,22 +85,41 @@ class AlarmStorage {
   }
 
   /// Saves on app kill notification custom [title] and [body].
-  static Future<void> setNotificationContentOnAppKill(
+  static Future<bool> setNotificationContentOnAppKill(
     String title,
     String body,
-  ) async =>
-      Future.wait([
-        (await prefs).setString(notificationOnAppKillTitle, title),
-        (await prefs).setString(notificationOnAppKillBody, body),
-      ]);
+  ) async {
+    try {
+      return await platform.invokeMethod('setNotificationContentOnAppKill', {
+        'title': title,
+        'body': body,
+      });
+    } catch (e) {
+      throw AlarmException(
+        'Failed to set the title and body of the notification that shows when the app is killed. $e',
+      );
+    }
+  }
 
   /// Returns notification on app kill [title].
-  static Future<String> getNotificationOnAppKillTitle() async =>
-      (await prefs).getString(notificationOnAppKillTitle) ??
-      'Your alarms may not ring';
+  static Future<String> getNotificationOnAppKillTitle() async {
+    try {
+      return await platform.invokeMethod('getNotificationOnAppKillTitle');
+    } catch (e) {
+      throw AlarmException(
+        'Failed to get the title of the notification that shows when the app is killed. $e',
+      );
+    }
+  }
 
   /// Returns notification on app kill [body].
-  static Future<String> getNotificationOnAppKillBody() async =>
-      (await prefs).getString(notificationOnAppKillBody) ??
-      'You killed the app. Please reopen so your alarms can be rescheduled.';
+  static Future<String> getNotificationOnAppKillBody() async {
+    try {
+      return await platform.invokeMethod('getNotificationOnAppKillBody');
+    } catch (e) {
+      throw AlarmException(
+        'Failed to get the body of the notification that shows when the app is killed. $e',
+      );
+    }
+  }
 }

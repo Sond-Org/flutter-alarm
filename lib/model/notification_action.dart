@@ -1,11 +1,3 @@
-import 'alarm_settings.dart';
-
-class NotificationEvent {
-  NotificationEvent(this.alarmSettings, this.action);
-  final AlarmSettings alarmSettings;
-  final NotificationAction action;
-}
-
 enum NotificationAction {
   dismiss,
   snooze,
