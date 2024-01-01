@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.gdelataillade.alarm.alarm">
+  package="com.gdelataillade.alarm">
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
@@ -7,9 +7,12 @@
   <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
   <application>
     <service
-        android:name=".NotificationOnKillService"
+        android:name=".notification.NotificationOnKillService"
         android:enabled="true"
         android:exported="false"/>
+    <receiver android:name=".notification.BedtimeNotificationReceiver" />
+    <receiver android:name=".alarm.AlarmReceiver" />
+    <service android:name=".alarm.AlarmService" />
     <service
         android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService"
         android:permission="android.permission.BIND_JOB_SERVICE"
