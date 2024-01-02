@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.PowerManager
 import com.gdelataillade.alarm.alarm.AlarmReceiver
 import com.gdelataillade.alarm.alarm.AlarmService
 import com.gdelataillade.alarm.notification.BedtimeNotificationReceiver
@@ -22,6 +23,18 @@ import java.io.Serializable
 
 class AlarmHandler(private val context: Context) {
     private val storageHandler = StorageHandler(context)
+
+    companion object {
+        // Shared lock object for all instances of AlarmHandler
+        private val lock = Any()
+    }
+
+    fun scheduleAlarm(alarm: JSONObject) {
+        val id = alarm.getInt("id")
+        val scheduleTime = alarm.getLong("dateTime")
+        val extras = createExtras(alarm, id)
+        scheduleAlarm(scheduleTime, id, extras)
+    }
 
     fun scheduleAlarm(
         call: MethodCall,
@@ -41,21 +54,53 @@ class AlarmHandler(private val context: Context) {
         val delayInSeconds = ((scheduleTime - System.currentTimeMillis()) / 1000).toInt()
 
         val alarmIntent = createAlarmIntent(id, extras)
-        if (delayInSeconds <= 5) {
-            handleImmediateAlarm(alarmIntent, delayInSeconds)
-        } else {
-            handleDelayedAlarm(alarmIntent, delayInSeconds, id)
+        synchronized(lock) {
+            if (delayInSeconds <= 5) {
+                handleImmediateAlarm(alarmIntent, delayInSeconds)
+            } else {
+                handleDelayedAlarm(alarmIntent, delayInSeconds, id)
+            }
         }
     }
 
-    fun createAlarmIntent(
+    fun rescheduleAlarms() {
+        synchronized(lock) {
+            Log.d("flutter/AlarmHandler", "Rescheduling alarms")
+
+            // Acquire a wakelock for 5 minutes, if possible
+            val wakeLock =
+                (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)
+                    ?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "app:AlarmWakelockTag")
+                    ?.apply {
+                        try {
+                            acquire(5 * 60 * 1000L)
+                        } catch (e: Exception) {
+                            Log.d("flutter/AlarmHandler", "No activity in the foreground to acquire a wakelock")
+                        }
+                    }
+
+            try {
+                // Reschedule all alarms
+                storageHandler.listAlarms().forEach { alarm ->
+                    stopAlarm(alarm.getInt("id"))
+                    scheduleAlarm(alarm)
+                    scheduleBedtimeNotification(alarm)
+                }
+            } finally {
+                // Ensure the wakelock is released even if an exception occurs
+                wakeLock?.release()
+            }
+        }
+    }
+
+    private fun createAlarmIntent(
         call: MethodCall,
         id: Int,
     ): Intent {
         return createAlarmIntent(id, createExtras(call, id))
     }
 
-    fun createAlarmIntent(
+    private fun createAlarmIntent(
         id: Int,
         extras: Bundle,
     ): Intent {
@@ -65,7 +110,7 @@ class AlarmHandler(private val context: Context) {
         return intent
     }
 
-    fun createExtras(
+    private fun createExtras(
         call: MethodCall,
         id: Int,
     ): Bundle {
@@ -109,7 +154,7 @@ class AlarmHandler(private val context: Context) {
         }
     }
 
-    fun createExtras(
+    private fun createExtras(
         json: JSONObject,
         id: Int,
     ): Bundle {
@@ -153,7 +198,7 @@ class AlarmHandler(private val context: Context) {
         }
     }
 
-    fun handleImmediateAlarm(
+    private fun handleImmediateAlarm(
         intent: Intent,
         delayInSeconds: Int,
     ) {
@@ -164,7 +209,7 @@ class AlarmHandler(private val context: Context) {
         }, delayInSeconds * 1000L)
     }
 
-    fun handleDelayedAlarm(
+    private fun handleDelayedAlarm(
         intent: Intent,
         delayInSeconds: Int,
         id: Int,
@@ -189,29 +234,31 @@ class AlarmHandler(private val context: Context) {
     }
 
     fun stopAlarm(id: Int) {
-        if (AlarmService.ringingAlarmIds.contains(id)) {
-            // Stop active alarm
-            Log.d("flutter/AlarmHandler", "Stopping ACTIVE alarm $id")
-            val stopIntent = Intent(context, AlarmService::class.java)
-            stopIntent.action = AlarmService.STOP_ALARM_ACTION
-            val alarm = storageHandler.getAlarm(id)
-            if (alarm == null) {
-                Log.d("flutter/AlarmHandler", "Alarm $id not found. Cannot schedule a recurring alarm!")
-                stopIntent.putExtra("id", id)
-            } else {
-                val extras = createExtras(alarm!!, id)
-                stopIntent.putExtras(extras)
+        synchronized(lock) {
+            if (AlarmService.ringingAlarmIds.contains(id)) {
+                // Stop active alarm
+                Log.d("flutter/AlarmHandler", "Stopping ACTIVE alarm $id")
+                val stopIntent = Intent(context, AlarmService::class.java)
+                stopIntent.action = AlarmService.STOP_ALARM_ACTION
+                val alarm = storageHandler.getAlarm(id)
+                if (alarm == null) {
+                    Log.d("flutter/AlarmHandler", "Alarm $id not found. Cannot schedule a recurring alarm!")
+                    stopIntent.putExtra("id", id)
+                } else {
+                    val extras = createExtras(alarm!!, id)
+                    stopIntent.putExtras(extras)
+                }
+
+                context.startService(stopIntent)
             }
 
-            context.startService(stopIntent)
+            // Stop future alarm, if it is set
+            Log.d("flutter/AlarmHandler", "Stopping FUTURE alarm $id, if it is set")
+            cancelFutureAlarm(id)
+
+            // Cancel future bedtime notification, if it is set
+            cancelBedtimeNotification(id)
         }
-
-        // Stop future alarm, if it is set
-        Log.d("flutter/AlarmHandler", "Stopping FUTURE alarm $id, if it is set")
-        cancelFutureAlarm(id)
-
-        // Cancel future bedtime notification, if it is set
-        cancelBedtimeNotification(id)
     }
 
     fun snoozeAlarm(
@@ -234,7 +281,7 @@ class AlarmHandler(private val context: Context) {
         handler.post({ context.sendBroadcast(intent) })
     }
 
-    fun cancelFutureAlarm(id: Int) {
+    private fun cancelFutureAlarm(id: Int) {
         val alarmIntent = Intent(context, AlarmReceiver::class.java)
         alarmIntent.action = AlarmService.START_ALARM_ACTION
         val pendingIntent =
@@ -275,6 +322,32 @@ class AlarmHandler(private val context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.cancel(bedtimeId)
         Log.d("flutter/AlarmHandler", "Bedtime notification $bedtimeId cancelled")
+    }
+
+    fun scheduleBedtimeNotification(alarm: JSONObject) {
+        val id = alarm.getInt("id")
+        val bedtime = alarm.optLong("bedtime", -1L)
+        if (bedtime == -1L) {
+            Log.d("flutter/AlarmHandler", "No bedtime set")
+            return
+        }
+
+        val title = alarm.optString("bedtimeNotificationTitle")
+        val body = alarm.optString("bedtimeNotificationBody")
+        if (title == null || body == null) {
+            Log.w("flutter/AlarmHandler", "No bedtime notification title or body set")
+            return
+        }
+
+        scheduleBedtimeNotification(
+            id,
+            bedtime,
+            title,
+            body,
+            // default to 2 hours
+            alarm.optInt("bedtimeAutoDismiss", 120 * 60),
+            alarm.optString("bedtimeDeepLinkUri"),
+        )
     }
 
     fun scheduleBedtimeNotification(

@@ -6,6 +6,7 @@ import androidx.annotation.NonNull
 import com.gdelataillade.alarm.features.AlarmHandler
 import com.gdelataillade.alarm.features.StorageHandler
 import com.gdelataillade.alarm.notification.NotificationOnKillService
+import com.gdelataillade.alarm.reboot.RebootBroadcastReceiver
 import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
@@ -38,6 +39,7 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
         binaryMessenger = flutterPluginBinding.binaryMessenger
         alarmHandler = AlarmHandler(context)
         storageHandler = StorageHandler(context)
+        RebootBroadcastReceiver.enableRescheduleOnReboot(context)
     }
 
     override fun onMethodCall(
