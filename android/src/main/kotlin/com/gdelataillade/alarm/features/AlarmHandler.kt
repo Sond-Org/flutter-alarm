@@ -131,7 +131,7 @@ class AlarmHandler(private val context: Context) {
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val  = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
             val pendingOpenAppIntent =
                 PendingIntent.getActivity(
                     context,
