@@ -1,5 +1,6 @@
 package com.gdelataillade.alarm.notification
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -55,7 +56,12 @@ class NotificationOnKillService : Service() {
                     .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setContentIntent(pendingIntent)
+                    .setFullScreenIntent(pendingIntent, true)
                     .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                notificationBuilder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+            }
 
             val name = "Alarm notification service on application kill"
             val descriptionText =
@@ -72,9 +78,9 @@ class NotificationOnKillService : Service() {
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
-            notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
+            startForeground(NOTIFICATION_ID, notificationBuilder.build())
         } catch (e: Exception) {
-            Log.d("NotificationOnKillService", "Error showing notification", e)
+            Log.d("flutter/NotificationOnKillService", "Error showing notification", e)
         }
         super.onTaskRemoved(rootIntent)
     }

@@ -5,7 +5,7 @@ import android.content.Intent
 import androidx.annotation.NonNull
 import com.gdelataillade.alarm.features.AlarmHandler
 import com.gdelataillade.alarm.features.StorageHandler
-import com.gdelataillade.alarm.notification.NotificationOnKillService
+import com.gdelataillade.alarm.features.NotificationHandler
 import com.gdelataillade.alarm.reboot.RebootBroadcastReceiver
 import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -20,6 +20,7 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var alarmHandler: AlarmHandler
     private lateinit var storageHandler: StorageHandler
+    private lateinit var notificationHandler: NotificationHandler
 
     companion object {
         @JvmStatic
@@ -39,6 +40,7 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
         binaryMessenger = flutterPluginBinding.binaryMessenger
         alarmHandler = AlarmHandler(context)
         storageHandler = StorageHandler(context)
+        notificationHandler = NotificationHandler(context)
         RebootBroadcastReceiver.enableRescheduleOnReboot(context)
     }
 
@@ -82,15 +84,14 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
             }
             // Notification on-app-killed management
             "setNotificationOnKillService" -> {
-                val serviceIntent = Intent(context, NotificationOnKillService::class.java)
-                serviceIntent.putExtra("title", call.argument<String>("title"))
-                serviceIntent.putExtra("body", call.argument<String>("body"))
-                context.startService(serviceIntent)
+                notificationHandler.startNotificationOnKillService(
+                    call.argument<String>("title")!!,
+                    call.argument<String>("body")!!,
+                )
                 result.success(true)
             }
             "stopNotificationOnKillService" -> {
-                val serviceIntent = Intent(context, NotificationOnKillService::class.java)
-                context.stopService(serviceIntent)
+                notificationHandler.stopNotificationOnKillService()
                 result.success(true)
             }
             "setNotificationContentOnAppKill" -> {

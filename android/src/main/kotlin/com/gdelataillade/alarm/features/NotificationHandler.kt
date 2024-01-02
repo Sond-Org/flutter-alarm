@@ -1,5 +1,7 @@
 package com.gdelataillade.alarm.features
 
+import com.gdelataillade.alarm.notification.NotificationOnKillService
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -160,5 +162,17 @@ class NotificationHandler(private val context: Context) {
                 .setTimeoutAfter(expirationDurationInSeconds * 1000L)
 
         return notificationBuilder.build()
+    }
+
+    fun startNotificationOnKillService(title : String, body : String) {
+        val serviceIntent = Intent(context, NotificationOnKillService::class.java)
+        serviceIntent.putExtra("title", title)
+        serviceIntent.putExtra("body", body)
+        context.startService(serviceIntent)
+    }
+
+    fun stopNotificationOnKillService() {
+        val serviceIntent = Intent(context, NotificationOnKillService::class.java)
+        context.stopService(serviceIntent)
     }
 }
