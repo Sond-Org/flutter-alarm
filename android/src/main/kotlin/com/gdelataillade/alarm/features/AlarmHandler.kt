@@ -50,17 +50,18 @@ class AlarmHandler(private val context: Context) {
         id: Int,
         extras: Bundle,
     ) {
-        Log.d("flutter/AlarmHandler", "Alarm scheduled at ${toDateTimeString(scheduleTime)}")
+        val scheduleTimeFormatted = toDateTimeString(scheduleTime)
+        Log.d("flutter/AlarmHandler", "Request to schedule alarm $id at ${scheduleTimeFormatted}")
         val delayInSeconds = ((scheduleTime - System.currentTimeMillis()) / 1000).toInt()
-
         val alarmIntent = createAlarmIntent(id, extras)
         synchronized(lock) {
             if (delayInSeconds <= 5) {
                 handleImmediateAlarm(alarmIntent, delayInSeconds)
             } else {
-                handleDelayedAlarm(alarmIntent, delayInSeconds, id)
+                handleDelayedAlarm(alarmIntent, scheduleTime, id)
             }
         }
+        Log.d("flutter/AlarmHandler", "Alarm SCHEDULED at ${scheduleTimeFormatted} (in $delayInSeconds seconds)")
     }
 
     fun rescheduleAlarms() {
@@ -202,7 +203,6 @@ class AlarmHandler(private val context: Context) {
         intent: Intent,
         delayInSeconds: Int,
     ) {
-        Log.d("flutter/AlarmHandler", "Alarm set and will trigger in $delayInSeconds seconds")
         val handler = Handler(Looper.getMainLooper())
         handler.postDelayed({
             context.sendBroadcast(intent)
@@ -211,11 +211,9 @@ class AlarmHandler(private val context: Context) {
 
     private fun handleDelayedAlarm(
         intent: Intent,
-        delayInSeconds: Int,
+        scheduleTime: Long,
         id: Int,
     ) {
-        Log.d("flutter/AlarmHandler", "Alarm set and will trigger in $delayInSeconds seconds")
-        val triggerTime = System.currentTimeMillis() + delayInSeconds * 1000
         val pendingIntent =
             PendingIntent.getBroadcast(
                 context,
@@ -226,10 +224,10 @@ class AlarmHandler(private val context: Context) {
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val info = AlarmManager.AlarmClockInfo(triggerTime, pendingIntent)
+            val info = AlarmManager.AlarmClockInfo(scheduleTime, pendingIntent)
             alarmManager.setAlarmClock(info, pendingIntent)
         } else {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, scheduleTime, pendingIntent)
         }
     }
 
@@ -410,6 +408,6 @@ class AlarmHandler(private val context: Context) {
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, bedtime, pendingIntent)
-        Log.d("flutter/AlarmHandler", "Bedtime notification $bedtimeId set at ${toDateTimeString(bedtime)}")
+        Log.d("flutter/AlarmHandler", "Bedtime notification $bedtimeId SCHEDULED at ${toDateTimeString(bedtime)}")
     }
 }
