@@ -78,7 +78,7 @@ class NotificationOnKillService : Service() {
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
-            notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
+            startForeground(NOTIFICATION_ID, notificationBuilder.build())
         } catch (e: Exception) {
             Log.d("flutter/NotificationOnKillService", "Error showing notification", e)
         }
