@@ -27,6 +27,7 @@ class NotificationOnKillService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        Log.d("flutter/NotificationOnKillService", "onStartCommand")
         title = intent?.getStringExtra("title") ?: "Your alarms could not ring"
         body = intent?.getStringExtra("body") ?: "You killed the app. Please reopen so your alarms can be rescheduled."
 
@@ -35,6 +36,7 @@ class NotificationOnKillService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d("flutter/NotificationOnKillService", "onTaskRemoved")
         try {
             val notificationIntent = packageManager.getLaunchIntentForPackage(packageName)
             val pendingIntent =
@@ -50,7 +52,7 @@ class NotificationOnKillService : Service() {
                     .setSmallIcon(android.R.drawable.ic_notification_overlay)
                     .setContentTitle(title)
                     .setContentText(body)
-                    .setAutoCancel(false)
+                    .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setContentIntent(pendingIntent)
                     .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI)
