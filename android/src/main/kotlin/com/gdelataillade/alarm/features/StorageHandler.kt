@@ -54,13 +54,9 @@ class StorageHandler(private val context: Context) {
     }
 
     fun listAlarms(): List<JSONObject> {
-        val alarms = mutableListOf<JSONObject>()
-        sharedPreferences.all.forEach { (key, value) ->
-            if (key.startsWith(keyPrefix)) {
-                alarms.add(JSONObject(value as String))
-            }
-        }
-        return alarms
+        return sharedPreferences.all
+            .filter { (key, _) -> key.startsWith(keyPrefix) }
+            .map { (_, value) -> JSONObject(value as String) }
     }
 
     fun setNotificationContentOnAppKill(

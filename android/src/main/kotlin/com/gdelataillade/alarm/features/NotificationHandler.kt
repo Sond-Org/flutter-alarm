@@ -1,7 +1,5 @@
 package com.gdelataillade.alarm.features
 
-import com.gdelataillade.alarm.notification.NotificationOnKillService
-
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -14,6 +12,7 @@ import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import com.gdelataillade.alarm.alarm.AlarmReceiver
 import com.gdelataillade.alarm.alarm.AlarmService
+import com.gdelataillade.alarm.notification.NotificationOnKillService
 
 class NotificationHandler(private val context: Context) {
     companion object {
@@ -41,7 +40,7 @@ class NotificationHandler(private val context: Context) {
         }
     }
 
-    fun buildNotification(
+    fun buildAlarmNotification(
         id: Int,
         title: String,
         body: String,
@@ -82,10 +81,9 @@ class NotificationHandler(private val context: Context) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
 
-        val iconResId = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
         val notificationBuilder =
             NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(iconResId)
+                .setSmallIcon(getNotificationIcon())
                 .setContentTitle(title)
                 .setContentText(body)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -123,13 +121,12 @@ class NotificationHandler(private val context: Context) {
         return notificationBuilder.build()
     }
 
-    fun buildBedtimeNotification(
+    fun buildNotification(
         title: String,
         body: String,
         expirationDurationInSeconds: Int,
         deeplinkUrl: String?,
     ): Notification {
-        val iconResId = context.resources.getIdentifier("ic_launcher", "mipmap", context.packageName)
         val intent =
             if (deeplinkUrl != null) {
                 Intent(Intent.ACTION_VIEW, Uri.parse(deeplinkUrl)).apply {
@@ -149,7 +146,7 @@ class NotificationHandler(private val context: Context) {
 
         val notificationBuilder =
             NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(iconResId)
+                .setSmallIcon(getNotificationIcon())
                 .setContentTitle(title)
                 .setContentText(body)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -164,7 +161,10 @@ class NotificationHandler(private val context: Context) {
         return notificationBuilder.build()
     }
 
-    fun startNotificationOnKillService(title : String, body : String) {
+    fun startNotificationOnKillService(
+        title: String,
+        body: String,
+    ) {
         val serviceIntent = Intent(context, NotificationOnKillService::class.java)
         serviceIntent.putExtra("title", title)
         serviceIntent.putExtra("body", body)
@@ -174,5 +174,16 @@ class NotificationHandler(private val context: Context) {
     fun stopNotificationOnKillService() {
         val serviceIntent = Intent(context, NotificationOnKillService::class.java)
         context.stopService(serviceIntent)
+    }
+
+    private fun getNotificationIcon(): Int {
+        val resourceName =
+            if (context.resources.getIdentifier("ic_notification", "mipmap", context.packageName) != 0) {
+                "ic_notification"
+            } else {
+                "ic_launcher"
+            }
+
+        return context.resources.getIdentifier(resourceName, "mipmap", context.packageName)
     }
 }

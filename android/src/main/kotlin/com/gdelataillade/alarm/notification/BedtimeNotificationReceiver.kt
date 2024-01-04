@@ -19,7 +19,7 @@ class BedtimeNotificationReceiver : BroadcastReceiver() {
         val deeplinkUrl = intent.getStringExtra("deeplinkUri")
 
         val notification =
-            notificationHandler.buildBedtimeNotification(
+            notificationHandler.buildNotification(
                 title,
                 body,
                 autoDismissSeconds,

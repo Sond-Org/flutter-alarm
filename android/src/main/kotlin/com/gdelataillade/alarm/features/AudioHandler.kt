@@ -2,6 +2,11 @@ package com.gdelataillade.alarm.features
 
 import android.content.Context
 import android.media.MediaPlayer
+import android.os.PowerManager
+import io.flutter.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.Timer
 import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
@@ -25,52 +30,66 @@ class AudioHandler(private val context: Context) {
     }
 
     fun playAudio(
+        scope: CoroutineScope,
         id: Int,
         filePath: String,
         loopAudio: Boolean,
         fadeDuration: Int?,
     ) {
-        stopAudio(id) // Stop and release any existing MediaPlayer and Timer for this ID
+        scope.launch(Dispatchers.IO) {
+            // Stop and release any existing MediaPlayer and Timer for this ID
+            stopAudio(id)
 
-        val adjustedFilePath =
-            if (filePath.startsWith("assets/")) {
-                "flutter_assets/$filePath"
-            } else {
-                filePath
-            }
-
-        try {
-            MediaPlayer().apply {
-                if (adjustedFilePath.startsWith("flutter_assets/")) {
-                    // It's an asset file
-                    val assetManager = context.assets
-                    val descriptor = assetManager.openFd(adjustedFilePath)
-                    setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+            val adjustedFilePath =
+                if (filePath.startsWith("assets/")) {
+                    "flutter_assets/$filePath"
                 } else {
-                    // Handle local files
-                    setDataSource(adjustedFilePath)
+                    filePath
                 }
 
-                prepare()
-                isLooping = loopAudio
-                start()
+            try {
+                MediaPlayer().apply {
+                    if (adjustedFilePath.startsWith("flutter_assets/")) {
+                        // It's an asset file
+                        val assetManager = context.assets
+                        val descriptor = assetManager.openFd(adjustedFilePath)
+                        setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+                    } else {
+                        // Handle local files
+                        setDataSource(adjustedFilePath)
+                    }
+                    setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
+                    prepareAsync()
 
-                setOnCompletionListener {
-                    if (!loopAudio) {
-                        onAudioComplete?.invoke()
+                    setOnPreparedListener {
+                        isLooping = loopAudio
+                        start()
+                    }
+
+                    setOnCompletionListener {
+                        if (!loopAudio) {
+                            // Switch back to the main thread to update UI or state
+                            scope.launch(Dispatchers.Main) {
+                                onAudioComplete?.invoke()
+                            }
+                        }
+                    }
+
+                    mediaPlayers[id] = this
+
+                    if (fadeDuration != null && fadeDuration > 0) {
+                        // Timer operations should also be offloaded
+                        scope.launch(Dispatchers.Default) {
+                            val timer = Timer(true)
+                            timers[id] = timer
+                            startFadeIn(this@apply, fadeDuration, timer)
+                        }
                     }
                 }
-
-                mediaPlayers[id] = this
-
-                if (fadeDuration != null && fadeDuration > 0) {
-                    val timer = Timer(true)
-                    timers[id] = timer
-                    startFadeIn(this, fadeDuration, timer)
-                }
+            } catch (e: Exception) {
+                Log.e("flutter/AlarmPlugin", "Error playing audio")
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
