@@ -6,14 +6,15 @@ import android.os.PowerManager
 import io.flutter.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Timer
-import java.util.TimerTask
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.log
 
 class AudioHandler(private val context: Context) {
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val mediaPlayers = ConcurrentHashMap<Int, MediaPlayer>()
-    private val timers = ConcurrentHashMap<Int, Timer>()
 
     private var onAudioComplete: (() -> Unit)? = null
 
@@ -30,14 +31,13 @@ class AudioHandler(private val context: Context) {
     }
 
     fun playAudio(
-        scope: CoroutineScope,
         id: Int,
         filePath: String,
         loopAudio: Boolean,
-        fadeDuration: Int?,
+        fadeDurationSec: Int?,
     ) {
         scope.launch(Dispatchers.IO) {
-            // Stop and release any existing MediaPlayer and Timer for this ID
+            // Stop and release any existing MediaPlayer for this ID
             stopAudio(id)
 
             val adjustedFilePath =
@@ -59,30 +59,21 @@ class AudioHandler(private val context: Context) {
                         setDataSource(adjustedFilePath)
                     }
                     setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
-                    prepareAsync()
+                    prepare()
 
-                    setOnPreparedListener {
-                        isLooping = loopAudio
-                        start()
-                    }
+                    isLooping = loopAudio
+                    start()
 
                     setOnCompletionListener {
                         if (!loopAudio) {
-                            // Switch back to the main thread to update UI or state
-                            scope.launch(Dispatchers.Main) {
-                                onAudioComplete?.invoke()
-                            }
+                            onAudioComplete?.invoke()
                         }
                     }
 
                     mediaPlayers[id] = this
-
-                    if (fadeDuration != null && fadeDuration > 0) {
-                        // Timer operations should also be offloaded
+                    if (fadeDurationSec != null && fadeDurationSec > 0) {
                         scope.launch(Dispatchers.Default) {
-                            val timer = Timer(true)
-                            timers[id] = timer
-                            startFadeIn(this@apply, fadeDuration, timer)
+                            startFadeIn(this@apply, fadeDurationSec)
                         }
                     }
                 }
@@ -94,9 +85,6 @@ class AudioHandler(private val context: Context) {
     }
 
     fun stopAudio(id: Int) {
-        timers[id]?.cancel()
-        timers.remove(id)
-
         mediaPlayers[id]?.apply {
             if (isPlaying) {
                 stop()
@@ -106,44 +94,31 @@ class AudioHandler(private val context: Context) {
         mediaPlayers.remove(id)
     }
 
-    private fun startFadeIn(
+    private suspend fun startFadeIn(
         mediaPlayer: MediaPlayer,
         duration: Int,
-        timer: Timer,
     ) {
         val maxVolume = 1.0f
-        val fadeDuration = (duration * 1000).toLong()
+        val fadeDuration = duration * 1000L
         val fadeInterval = 100L
         val numberOfSteps = fadeDuration / fadeInterval
         val deltaVolume = maxVolume / numberOfSteps
         var volume = 0.0f
 
-        timer.schedule(
-            object : TimerTask() {
-                override fun run() {
-                    if (!mediaPlayer.isPlaying) {
-                        cancel()
-                        return
-                    }
+        while (volume <= maxVolume) {
+            if (!mediaPlayer.isPlaying) {
+                return
+            }
 
-                    mediaPlayer.setVolume(volume, volume)
-                    volume += deltaVolume
-
-                    if (volume >= maxVolume) {
-                        mediaPlayer.setVolume(maxVolume, maxVolume)
-                        cancel()
-                    }
-                }
-            },
-            0,
-            fadeInterval,
-        )
+            val scaledVolume = 1 - log(1 + (1 - volume) * 9, 10.0f)
+            Log.d("flutter/AlarmPlugin", "Fade in volume: $scaledVolume")
+            mediaPlayer.setVolume(scaledVolume, scaledVolume)
+            volume += deltaVolume
+            delay(fadeInterval)
+        }
     }
 
     fun cleanUp() {
-        timers.values.forEach(Timer::cancel)
-        timers.clear()
-
         mediaPlayers.values.forEach { mediaPlayer ->
             if (mediaPlayer.isPlaying) {
                 mediaPlayer.stop()
