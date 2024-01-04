@@ -15,12 +15,8 @@ import com.gdelataillade.alarm.features.VolumeHandler
 import com.gdelataillade.alarm.utils.nextDateInMillis
 import io.flutter.Log
 import io.flutter.plugin.common.MethodChannel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 
 class AlarmService : Service() {
-    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private lateinit var channel: MethodChannel
     private lateinit var audioHandler: AudioHandler
     private lateinit var vibrationHandler: VibrationHandler

@@ -31,7 +31,6 @@ class AudioHandler(private val context: Context) {
     }
 
     fun playAudio(
-        scope: CoroutineScope,
         id: Int,
         filePath: String,
         loopAudio: Boolean,
