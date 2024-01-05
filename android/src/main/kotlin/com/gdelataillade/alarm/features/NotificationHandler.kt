@@ -146,7 +146,7 @@ class NotificationHandler(private val context: Context) {
             )
 
         val notificationBuilder =
-            Notification.Builder(context, CHANNEL_ID)
+            NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(iconResId)
                 .setContentTitle(title)
                 .setContentText(body)
