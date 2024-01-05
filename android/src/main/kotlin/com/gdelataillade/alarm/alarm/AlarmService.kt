@@ -8,10 +8,10 @@ import android.os.IBinder
 import android.os.PowerManager
 import com.gdelataillade.alarm.features.AlarmHandler
 import com.gdelataillade.alarm.features.AudioHandler
+import com.gdelataillade.alarm.features.NotificationHandler
 import com.gdelataillade.alarm.features.StorageHandler
 import com.gdelataillade.alarm.features.VibrationHandler
 import com.gdelataillade.alarm.features.VolumeHandler
-import com.gdelataillade.alarm.notification.NotificationHandler
 import com.gdelataillade.alarm.utils.nextDateInMillis
 import io.flutter.Log
 import io.flutter.plugin.common.MethodChannel

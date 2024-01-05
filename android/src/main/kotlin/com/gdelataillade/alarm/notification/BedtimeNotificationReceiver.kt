@@ -4,6 +4,7 @@ import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.gdelataillade.alarm.features.NotificationHandler
 
 class BedtimeNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(
