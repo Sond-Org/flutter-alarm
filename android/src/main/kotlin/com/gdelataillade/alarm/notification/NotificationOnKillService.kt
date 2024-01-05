@@ -1,5 +1,6 @@
 package com.gdelataillade.alarm.notification
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -27,6 +28,7 @@ class NotificationOnKillService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        Log.d("flutter/NotificationOnKillService", "onStartCommand")
         title = intent?.getStringExtra("title") ?: "Your alarms could not ring"
         body = intent?.getStringExtra("body") ?: "You killed the app. Please reopen so your alarms can be rescheduled."
 
@@ -35,6 +37,7 @@ class NotificationOnKillService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d("flutter/NotificationOnKillService", "onTaskRemoved")
         try {
             val notificationIntent = packageManager.getLaunchIntentForPackage(packageName)
             val pendingIntent =
@@ -50,10 +53,15 @@ class NotificationOnKillService : Service() {
                     .setSmallIcon(android.R.drawable.ic_notification_overlay)
                     .setContentTitle(title)
                     .setContentText(body)
-                    .setAutoCancel(false)
+                    .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setContentIntent(pendingIntent)
+                    .setFullScreenIntent(pendingIntent, true)
                     .setSound(Settings.System.DEFAULT_ALARM_ALERT_URI)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                notificationBuilder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+            }
 
             val name = "Alarm notification service on application kill"
             val descriptionText =
@@ -72,7 +80,7 @@ class NotificationOnKillService : Service() {
             notificationManager.createNotificationChannel(channel)
             notificationManager.notify(NOTIFICATION_ID, notificationBuilder.build())
         } catch (e: Exception) {
-            Log.d("NotificationOnKillService", "Error showing notification", e)
+            Log.d("flutter/NotificationOnKillService", "Error showing notification", e)
         }
         super.onTaskRemoved(rootIntent)
     }
