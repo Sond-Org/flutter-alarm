@@ -1,12 +1,12 @@
 package com.gdelataillade.alarm.alarm
 
 import android.content.Context
-import android.content.Intent
 import androidx.annotation.NonNull
 import com.gdelataillade.alarm.features.AlarmHandler
-import com.gdelataillade.alarm.features.StorageHandler
 import com.gdelataillade.alarm.features.NotificationHandler
+import com.gdelataillade.alarm.features.StorageHandler
 import com.gdelataillade.alarm.reboot.RebootBroadcastReceiver
+import com.gdelataillade.alarm.utils.toBundle
 import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
@@ -51,9 +51,10 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
         when (call.method) {
             // Alarm management
             "setAlarm" -> {
-                val id = call.argument<Int>("id")!!
-                alarmHandler.scheduleAlarm(call, id)
-                alarmHandler.scheduleBedtimeNotification(call, id)
+                val bundle = toBundle(call)
+                alarmHandler.scheduleAlarm(bundle)
+                alarmHandler.scheduleBedtimeNotification(bundle)
+                val id = bundle.getInt("id")
                 storageHandler.saveAlarm(id, call.arguments<Map<String, Any>>()!!)
                 result.success(true)
             }
@@ -63,8 +64,7 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
                 result.success(true)
             }
             "snoozeAlarm" -> {
-                val id = call.argument<Int>("id")!!
-                alarmHandler.snoozeAlarm(call, id)
+                alarmHandler.snoozeAlarm(toBundle(call))
                 result.success(true)
             }
             // Alarm states

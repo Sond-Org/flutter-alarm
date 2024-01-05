@@ -1,6 +1,7 @@
 package com.gdelataillade.alarm.utils
 
 import android.os.Bundle
+import io.flutter.plugin.common.MethodCall
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.Serializable
@@ -47,6 +48,76 @@ fun nextDateInMillis(
 fun nextDateInMillis(millis: Long): Long {
     val date = Date(millis)
     return nextDateInMillis(date.hours, date.minutes)
+}
+
+fun toBundle(jsonObject: JSONObject): Bundle {
+    val bundle = Bundle()
+
+    jsonObject.keys().forEach { key ->
+        when (val value = jsonObject.get(key)) {
+            is String -> bundle.putString(key, value)
+            is Int -> bundle.putInt(key, value)
+            is Long -> bundle.putLong(key, value)
+            is Double -> bundle.putDouble(key, value)
+            is Float -> bundle.putFloat(key, value)
+            is Boolean -> bundle.putBoolean(key, value)
+            is JSONObject -> {
+                bundle.putSerializable(key, toMap(value) as Serializable)
+            }
+            is org.json.JSONArray -> {
+                // Convert JSONArray to an ArrayList of appropriate types and add to bundle
+                val list = arrayListOf<Any>()
+                for (i in 0 until value.length()) {
+                    when (val item = value.get(i)) {
+                        is String -> list.add(item)
+                        is Int -> list.add(item)
+                        is Long -> list.add(item)
+                        is Double -> list.add(item)
+                        is Float -> list.add(item)
+                        is Boolean -> list.add(item)
+                        else -> throw IllegalArgumentException("Unsupported array item type: $item")
+                    }
+                }
+
+                bundle.putSerializable(key, list)
+            }
+            else -> throw IllegalArgumentException("Unsupported value type: $value")
+        }
+    }
+
+    return bundle
+}
+
+fun toBundle(call: MethodCall): Bundle {
+    val bundle = Bundle()
+    val arguments = call.arguments<Map<String, Any>?>() ?: return bundle
+
+    arguments.forEach { (key, value) ->
+        when (value) {
+            is String -> bundle.putString(key, value)
+            is Int -> bundle.putInt(key, value)
+            is Long -> bundle.putLong(key, value)
+            is Double -> bundle.putDouble(key, value)
+            is Float -> bundle.putFloat(key, value)
+            is Boolean -> bundle.putBoolean(key, value)
+            is List<*> -> {
+                when (value.firstOrNull()) {
+                    is String -> bundle.putStringArrayList(key, value as ArrayList<String>)
+                    is Int -> bundle.putIntegerArrayList(key, value as ArrayList<Int>)
+                    is Long -> bundle.putLongArray(key, value.toTypedArray() as LongArray)
+                    is Double -> bundle.putDoubleArray(key, value.toTypedArray() as DoubleArray)
+                    is Float -> bundle.putFloatArray(key, value.toTypedArray() as FloatArray)
+                    is Boolean -> bundle.putBooleanArray(key, value.toTypedArray() as BooleanArray)
+                    else -> throw IllegalArgumentException("Unsupported value type: $value")
+                }
+            }
+            is Map<*, *> -> {
+                bundle.putSerializable(key, value as Serializable)
+            }
+            else -> throw IllegalArgumentException("Unsupported value type: $value")
+        }
+    }
+    return bundle
 }
 
 fun toJSONObject(bundle: Bundle): JSONObject {
@@ -134,4 +205,17 @@ fun toList(jsonArray: JSONArray): List<Any> {
     }
 
     return list
+}
+
+fun toString(bundle: Bundle): String {
+    val stringBuilder = StringBuilder("Bundle{")
+    for (key in bundle.keySet()) {
+        stringBuilder.append(" $key=")
+        when (val value = bundle[key]) {
+            is Bundle -> stringBuilder.append(toString(value)) // Recursive call for nested Bundles
+            else -> stringBuilder.append(value.toString())
+        }
+    }
+    stringBuilder.append(" }")
+    return stringBuilder.toString()
 }

@@ -131,21 +131,20 @@ class AlarmService : Service() {
         id: Int,
         extras: Bundle?,
     ) {
+        // Wake up the device for at least 5 minutes to ensure the alarm rings
+        val wakeLock =
+            (getSystemService(Context.POWER_SERVICE) as PowerManager)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "app:AlarmWakelockTag")
+        wakeLock.acquire(5 * 60 * 1000L)
+
         showNotification(id, extras)
+        startAlarmAudio(id, extras)
+        notifyAlarmRinging(id)
 
         // TODO(system-alert): Decide if this is something we want to do
         // val activityIntent = applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName)
         // activityIntent?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         // startActivity(activityIntent)
-
-        startAlarmAudio(id, extras)
-        notifyAlarmRinging(id)
-
-        // Wake up the device
-        val wakeLock =
-            (getSystemService(Context.POWER_SERVICE) as PowerManager)
-                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "app:AlarmWakelockTag")
-        wakeLock.acquire(5 * 60 * 1000L) // 5 minutes
     }
 
     private fun stopAlarm(id: Int) {
@@ -225,7 +224,7 @@ class AlarmService : Service() {
 
         val notificationHandler = NotificationHandler(this)
         val notification =
-            notificationHandler.buildNotification(
+            notificationHandler.buildAlarmNotification(
                 id,
                 notificationTitle,
                 notificationBody,
@@ -263,12 +262,10 @@ class AlarmService : Service() {
         }
 
         audioHandler.playAudio(id, assetAudioPath, loopAudio, fadeDuration)
-
+        ringingAlarmIds = ringingAlarmIds + id
         if (vibrate) {
             vibrationHandler.startVibrating(longArrayOf(0, 500, 500), 1)
         }
-
-        ringingAlarmIds = audioHandler.getPlayingMediaPlayersIds()!!
     }
 
     private fun notifyAlarmRinging(id: Int) {

@@ -2,13 +2,19 @@ package com.gdelataillade.alarm.features
 
 import android.content.Context
 import android.media.MediaPlayer
-import java.util.Timer
-import java.util.TimerTask
+import android.os.PowerManager
+import io.flutter.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.log
 
 class AudioHandler(private val context: Context) {
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val mediaPlayers = ConcurrentHashMap<Int, MediaPlayer>()
-    private val timers = ConcurrentHashMap<Int, Timer>()
 
     private var onAudioComplete: (() -> Unit)? = null
 
@@ -28,56 +34,57 @@ class AudioHandler(private val context: Context) {
         id: Int,
         filePath: String,
         loopAudio: Boolean,
-        fadeDuration: Int?,
+        fadeDurationSec: Int?,
     ) {
-        stopAudio(id) // Stop and release any existing MediaPlayer and Timer for this ID
+        scope.launch(Dispatchers.IO) {
+            // Stop and release any existing MediaPlayer for this ID
+            stopAudio(id)
 
-        val adjustedFilePath =
-            if (filePath.startsWith("assets/")) {
-                "flutter_assets/$filePath"
-            } else {
-                filePath
-            }
-
-        try {
-            MediaPlayer().apply {
-                if (adjustedFilePath.startsWith("flutter_assets/")) {
-                    // It's an asset file
-                    val assetManager = context.assets
-                    val descriptor = assetManager.openFd(adjustedFilePath)
-                    setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+            val adjustedFilePath =
+                if (filePath.startsWith("assets/")) {
+                    "flutter_assets/$filePath"
                 } else {
-                    // Handle local files
-                    setDataSource(adjustedFilePath)
+                    filePath
                 }
 
-                prepare()
-                isLooping = loopAudio
-                start()
+            try {
+                MediaPlayer().apply {
+                    if (adjustedFilePath.startsWith("flutter_assets/")) {
+                        // It's an asset file
+                        val assetManager = context.assets
+                        val descriptor = assetManager.openFd(adjustedFilePath)
+                        setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+                    } else {
+                        // Handle local files
+                        setDataSource(adjustedFilePath)
+                    }
+                    setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
+                    prepare()
 
-                setOnCompletionListener {
-                    if (!loopAudio) {
-                        onAudioComplete?.invoke()
+                    isLooping = loopAudio
+                    start()
+
+                    setOnCompletionListener {
+                        if (!loopAudio) {
+                            onAudioComplete?.invoke()
+                        }
+                    }
+
+                    mediaPlayers[id] = this
+                    if (fadeDurationSec != null && fadeDurationSec > 0) {
+                        scope.launch(Dispatchers.Default) {
+                            startFadeIn(this@apply, fadeDurationSec)
+                        }
                     }
                 }
-
-                mediaPlayers[id] = this
-
-                if (fadeDuration != null && fadeDuration > 0) {
-                    val timer = Timer(true)
-                    timers[id] = timer
-                    startFadeIn(this, fadeDuration, timer)
-                }
+            } catch (e: Exception) {
+                Log.e("flutter/AlarmPlugin", "Error playing audio")
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
     }
 
     fun stopAudio(id: Int) {
-        timers[id]?.cancel()
-        timers.remove(id)
-
         mediaPlayers[id]?.apply {
             if (isPlaying) {
                 stop()
@@ -87,44 +94,31 @@ class AudioHandler(private val context: Context) {
         mediaPlayers.remove(id)
     }
 
-    private fun startFadeIn(
+    private suspend fun startFadeIn(
         mediaPlayer: MediaPlayer,
         duration: Int,
-        timer: Timer,
     ) {
         val maxVolume = 1.0f
-        val fadeDuration = (duration * 1000).toLong()
+        val fadeDuration = duration * 1000L
         val fadeInterval = 100L
         val numberOfSteps = fadeDuration / fadeInterval
         val deltaVolume = maxVolume / numberOfSteps
         var volume = 0.0f
 
-        timer.schedule(
-            object : TimerTask() {
-                override fun run() {
-                    if (!mediaPlayer.isPlaying) {
-                        cancel()
-                        return
-                    }
+        while (volume <= maxVolume) {
+            if (!mediaPlayer.isPlaying) {
+                return
+            }
 
-                    mediaPlayer.setVolume(volume, volume)
-                    volume += deltaVolume
-
-                    if (volume >= maxVolume) {
-                        mediaPlayer.setVolume(maxVolume, maxVolume)
-                        cancel()
-                    }
-                }
-            },
-            0,
-            fadeInterval,
-        )
+            val scaledVolume = 1 - log(1 + (1 - volume) * 9, 10.0f)
+            Log.d("flutter/AlarmPlugin", "Fade in volume: $scaledVolume")
+            mediaPlayer.setVolume(scaledVolume, scaledVolume)
+            volume += deltaVolume
+            delay(fadeInterval)
+        }
     }
 
     fun cleanUp() {
-        timers.values.forEach(Timer::cancel)
-        timers.clear()
-
         mediaPlayers.values.forEach { mediaPlayer ->
             if (mediaPlayer.isPlaying) {
                 mediaPlayer.stop()

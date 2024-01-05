@@ -14,12 +14,10 @@ import com.gdelataillade.alarm.alarm.AlarmReceiver
 import com.gdelataillade.alarm.alarm.AlarmService
 import com.gdelataillade.alarm.notification.BedtimeNotificationReceiver
 import com.gdelataillade.alarm.utils.toBedtimeId
+import com.gdelataillade.alarm.utils.toBundle
 import com.gdelataillade.alarm.utils.toDateTimeString
-import com.gdelataillade.alarm.utils.toMap
 import io.flutter.Log
-import io.flutter.plugin.common.MethodCall
 import org.json.JSONObject
-import java.io.Serializable
 
 class AlarmHandler(private val context: Context) {
     private val storageHandler = StorageHandler(context)
@@ -30,30 +28,34 @@ class AlarmHandler(private val context: Context) {
     }
 
     fun scheduleAlarm(alarm: JSONObject) {
-        val id = alarm.getInt("id")
-        val scheduleTime = alarm.getLong("dateTime")
-        val extras = createExtras(alarm, id)
-        scheduleAlarm(scheduleTime, id, extras)
+        scheduleAlarm(toBundle(alarm))
     }
 
-    fun scheduleAlarm(
-        call: MethodCall,
-        id: Int,
-    ) {
-        val scheduleTime = call.argument<Long>("dateTime")!!
-        val extras = createExtras(call, id)
-        scheduleAlarm(scheduleTime, id, extras)
+    fun scheduleAlarm(alarm: Bundle) {
+        val id = alarm.getInt("id", -1)
+        if (id == -1) {
+            Log.d("flutter/AlarmHandler", "No id set")
+            return
+        }
+
+        val scheduleTime = alarm.getLong("dateTime", -1L)
+        if (scheduleTime == -1L) {
+            Log.d("flutter/AlarmHandler", "No dateTime set")
+            return
+        }
+
+        scheduleAlarm(scheduleTime, id, alarm)
     }
 
     fun scheduleAlarm(
         scheduleTime: Long,
         id: Int,
-        extras: Bundle,
+        alarm: Bundle,
     ) {
         val scheduleTimeFormatted = toDateTimeString(scheduleTime)
-        Log.d("flutter/AlarmHandler", "Request to schedule alarm $id at ${scheduleTimeFormatted}")
+        Log.d("flutter/AlarmHandler", "Request to schedule alarm $id at $scheduleTimeFormatted")
         val delayInSeconds = ((scheduleTime - System.currentTimeMillis()) / 1000).toInt()
-        val alarmIntent = createAlarmIntent(id, extras)
+        val alarmIntent = createAlarmIntent(id, alarm)
         synchronized(lock) {
             if (delayInSeconds <= 5) {
                 handleImmediateAlarm(alarmIntent, delayInSeconds)
@@ -61,7 +63,7 @@ class AlarmHandler(private val context: Context) {
                 handleDelayedAlarm(alarmIntent, scheduleTime, id)
             }
         }
-        Log.d("flutter/AlarmHandler", "Alarm SCHEDULED at ${scheduleTimeFormatted} (in $delayInSeconds seconds)")
+        Log.d("flutter/AlarmHandler", "Alarm SCHEDULED at $scheduleTimeFormatted (in $delayInSeconds seconds)")
     }
 
     fun rescheduleAlarms() {
@@ -95,108 +97,13 @@ class AlarmHandler(private val context: Context) {
     }
 
     private fun createAlarmIntent(
-        call: MethodCall,
         id: Int,
-    ): Intent {
-        return createAlarmIntent(id, createExtras(call, id))
-    }
-
-    private fun createAlarmIntent(
-        id: Int,
-        extras: Bundle,
+        alarm: Bundle,
     ): Intent {
         val intent = Intent(context, AlarmReceiver::class.java)
         intent.action = AlarmService.START_ALARM_ACTION
-        intent.putExtras(extras)
+        intent.putExtras(alarm)
         return intent
-    }
-
-    private fun createExtras(
-        call: MethodCall,
-        id: Int,
-    ): Bundle {
-        return Bundle().apply {
-            putInt("id", id)
-            putString("assetAudioPath", call.argument<String>("assetAudioPath"))
-            putBoolean("loopAudio", call.argument<Boolean>("loopAudio") ?: true)
-            putBoolean("vibrate", call.argument<Boolean>("vibrate") ?: false)
-            putBoolean("volumeMax", call.argument<Boolean>("volumeMax") ?: false)
-            putInt("fadeDuration", call.argument<Int>("fadeDuration") ?: 0)
-            putString("notificationTitle", call.argument<String>("notificationTitle"))
-            putString("notificationBody", call.argument<String>("notificationBody"))
-            putBoolean("fullScreenIntent", call.argument<Boolean>("fullScreenIntent") ?: true)
-            val originalHour = call.argument<Int>("originalHour")
-            if (originalHour != null) {
-                putInt("originalHour", originalHour!!)
-            }
-            val originalMinute = call.argument<Int>("originalMinute")
-            if (originalMinute != null) {
-                putInt("originalMinute", originalMinute!!)
-            }
-            putBoolean("recurring", call.argument<Boolean>("recurring") ?: false)
-            val bedtime = call.argument<Long>("bedtime")
-            if (bedtime != null) {
-                putLong("bedtime", bedtime!!)
-            }
-            putInt("bedtimeAutoDismiss", call.argument<Int>("bedtimeAutoDismiss") ?: 120 * 60) // default to 2 hours
-            putString("bedtimeNotificationTitle", call.argument<String>("bedtimeNotificationTitle"))
-            putString("bedtimeNotificationBody", call.argument<String>("bedtimeNotificationBody"))
-            putString("bedtimeDeepLinkUri", call.argument<String>("bedtimeDeepLinkUri"))
-            putBoolean("snooze", call.argument<Boolean>("snooze") ?: false)
-            putInt("snoozeDuration", call.argument<Int>("snoozeDuration") ?: 5 * 60) // default to 5 minutes
-            putString("notificationActionSnoozeLabel", call.argument<String>("notificationActionSnoozeLabel"))
-            putString("notificationActionDismissLabel", call.argument<String>("notificationActionDismissLabel"))
-            putBoolean("enableNotificationOnKill", call.argument<Boolean>("enableNotificationOnKill") ?: false)
-            putBoolean("stopOnNotificationOpen", call.argument<Boolean>("stopOnNotificationOpen") ?: false)
-            val extra = call.argument<Map<String, Any>>("extra")
-            if (extra != null) {
-                putSerializable("extra", extra as Serializable)
-            }
-        }
-    }
-
-    private fun createExtras(
-        json: JSONObject,
-        id: Int,
-    ): Bundle {
-        return Bundle().apply {
-            putInt("id", id)
-            putString("assetAudioPath", json.optString("assetAudioPath"))
-            putBoolean("loopAudio", json.optBoolean("loopAudio", true))
-            putBoolean("vibrate", json.optBoolean("vibrate", false))
-            putBoolean("volumeMax", json.optBoolean("volumeMax", false))
-            putInt("fadeDuration", json.optInt("fadeDuration", 0))
-            putString("notificationTitle", json.optString("notificationTitle"))
-            putString("notificationBody", json.optString("notificationBody"))
-            putBoolean("fullScreenIntent", json.optBoolean("fullScreenIntent", true))
-            val originalHour = json.optInt("originalHour", -1)
-            if (originalHour != -1) {
-                putInt("originalHour", originalHour)
-            }
-            val originalMinute = json.optInt("originalMinute", -1)
-            if (originalMinute != -1) {
-                putInt("originalMinute", originalMinute)
-            }
-            putBoolean("recurring", json.optBoolean("recurring", false))
-            val bedtime = json.optLong("bedtime", -1L)
-            if (bedtime != -1L) {
-                putLong("bedtime", bedtime)
-            }
-            putInt("bedtimeAutoDismiss", json.optInt("bedtimeAutoDismiss", 120 * 60)) // default to 2 hours
-            putString("bedtimeNotificationTitle", json.optString("bedtimeNotificationTitle"))
-            putString("bedtimeNotificationBody", json.optString("bedtimeNotificationBody"))
-            putString("bedtimeDeepLinkUri", json.optString("bedtimeDeepLinkUri"))
-            putBoolean("snooze", json.optBoolean("snooze", false))
-            putInt("snoozeDuration", json.optInt("snoozeDuration", 5 * 60)) // default to 5 minutes
-            putString("notificationActionSnoozeLabel", json.optString("notificationActionSnoozeLabel"))
-            putString("notificationActionDismissLabel", json.optString("notificationActionDismissLabel"))
-            putBoolean("enableNotificationOnKill", json.optBoolean("enableNotificationOnKill", false))
-            putBoolean("stopOnNotificationOpen", json.optBoolean("stopOnNotificationOpen", false))
-            val extra = json.optJSONObject("extra")
-            if (extra != null) {
-                putSerializable("extra", toMap(extra) as Serializable)
-            }
-        }
     }
 
     private fun handleImmediateAlarm(
@@ -251,7 +158,7 @@ class AlarmHandler(private val context: Context) {
                     Log.d("flutter/AlarmHandler", "Alarm $id not found. Cannot schedule a recurring alarm!")
                     stopIntent.putExtra("id", id)
                 } else {
-                    val extras = createExtras(alarm!!, id)
+                    val extras = toBundle(alarm!!)
                     stopIntent.putExtras(extras)
                 }
 
@@ -267,24 +174,12 @@ class AlarmHandler(private val context: Context) {
         }
     }
 
-    fun snoozeAlarm(
-        call: MethodCall,
-        id: Int,
-    ) {
-        val extras = createExtras(call, id)
-        snoozeAlarm(id, extras)
-    }
-
-    fun snoozeAlarm(
-        id: Int,
-        extras: Bundle,
-    ) {
-        Log.d("flutter/AlarmHandler", "Snoozing alarm $id")
+    fun snoozeAlarm(alarm: Bundle) {
+        Log.d("flutter/AlarmHandler", "Snoozing alarm ${alarm.getInt("id")}")
         val intent = Intent(context, AlarmReceiver::class.java)
         intent.action = AlarmService.SNOOZE_ALARM_ACTION
-        intent.putExtras(extras)
-        val handler = Handler(Looper.getMainLooper())
-        handler.post({ context.sendBroadcast(intent) })
+        intent.putExtras(alarm)
+        context.sendBroadcast(intent)
     }
 
     private fun cancelFutureAlarm(id: Int) {
@@ -306,40 +201,20 @@ class AlarmHandler(private val context: Context) {
         pendingIntent.cancel()
     }
 
-    fun cancelBedtimeNotification(id: Int) {
-        val bedtimeId = toBedtimeId(id)
-        val intent = Intent(context, BedtimeNotificationReceiver::class.java)
-        val pendingIntent =
-            PendingIntent.getBroadcast(
-                context,
-                bedtimeId,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
-
-        // Cancel alarm
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.cancel(pendingIntent)
-
-        // Cancel pending intent
-        pendingIntent.cancel()
-
-        // Cancel notification
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(bedtimeId)
-        Log.d("flutter/AlarmHandler", "Bedtime notification $bedtimeId cancelled")
+    fun scheduleBedtimeNotification(alarm: JSONObject) {
+        scheduleBedtimeNotification(toBundle(alarm))
     }
 
-    fun scheduleBedtimeNotification(alarm: JSONObject) {
+    fun scheduleBedtimeNotification(alarm: Bundle) {
         val id = alarm.getInt("id")
-        val bedtime = alarm.optLong("bedtime", -1L)
+        val bedtime = alarm.getLong("bedtime", -1L)
         if (bedtime == -1L) {
             Log.d("flutter/AlarmHandler", "No bedtime set")
             return
         }
 
-        val title = alarm.optString("bedtimeNotificationTitle")
-        val body = alarm.optString("bedtimeNotificationBody")
+        val title = alarm.getString("bedtimeNotificationTitle")
+        val body = alarm.getString("bedtimeNotificationBody")
         if (title == null || body == null) {
             Log.w("flutter/AlarmHandler", "No bedtime notification title or body set")
             return
@@ -351,36 +226,8 @@ class AlarmHandler(private val context: Context) {
             title,
             body,
             // default to 2 hours
-            alarm.optInt("bedtimeAutoDismiss", 120 * 60),
-            alarm.optString("bedtimeDeepLinkUri"),
-        )
-    }
-
-    fun scheduleBedtimeNotification(
-        call: MethodCall,
-        id: Int,
-    ) {
-        val bedtime = call.argument<Long>("bedtime")
-        if (bedtime == null) {
-            Log.d("flutter/AlarmHandler", "No bedtime set")
-            return
-        }
-
-        val title = call.argument<String>("bedtimeNotificationTitle")
-        val body = call.argument<String>("bedtimeNotificationBody")
-        if (title == null || body == null) {
-            Log.w("flutter/AlarmHandler", "No bedtime notification title or body set")
-            return
-        }
-
-        scheduleBedtimeNotification(
-            id,
-            bedtime,
-            title,
-            body,
-            // default to 2 hours
-            call.argument<Int>("bedtimeAutoDismiss") ?: 120 * 60,
-            call.argument<String>("bedtimeDeepLinkUri"),
+            alarm.getInt("bedtimeAutoDismiss", 120 * 60),
+            alarm.getString("bedtimeDeepLinkUri"),
         )
     }
 
@@ -417,5 +264,29 @@ class AlarmHandler(private val context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, bedtime, pendingIntent)
         Log.d("flutter/AlarmHandler", "Bedtime notification $bedtimeId SCHEDULED at ${toDateTimeString(bedtime)}")
+    }
+
+    fun cancelBedtimeNotification(id: Int) {
+        val bedtimeId = toBedtimeId(id)
+        val intent = Intent(context, BedtimeNotificationReceiver::class.java)
+        val pendingIntent =
+            PendingIntent.getBroadcast(
+                context,
+                bedtimeId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+
+        // Cancel alarm
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(pendingIntent)
+
+        // Cancel pending intent
+        pendingIntent.cancel()
+
+        // Cancel notification
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(bedtimeId)
+        Log.d("flutter/AlarmHandler", "Bedtime notification $bedtimeId cancelled")
     }
 }
