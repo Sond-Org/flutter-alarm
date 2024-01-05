@@ -61,7 +61,8 @@ android {
 }
 
 dependencies {
-    api "io.flutter:flutter_embedding_debug:1.0.0-74d16627b940bb15e50891f82cad6c3e3465bd6d"
+    // Comment out the line below when debugging in Android Studio or running gradle commands.
+    // api "io.flutter:flutter_embedding_debug:1.0.0-74d16627b940bb15e50891f82cad6c3e3465bd6d"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0"
