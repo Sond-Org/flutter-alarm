@@ -4,6 +4,7 @@ import AVFoundation
 import AudioToolbox
 import MediaPlayer
 
+// TODO: Fix this implementation
 public class SwiftAlarmPlugin: NSObject, FlutterPlugin {
     #if targetEnvironment(simulator)
         private let isDevice = false
