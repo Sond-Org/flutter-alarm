@@ -64,13 +64,16 @@ class AlarmSettings {
 
   /// The amount of time after which the bedtime notification should be
   /// dismissed.
-  final Duration bedtimeAutoDissmiss;
+  final Duration bedtimeAutoDismiss;
 
   /// Title of the notification to be shown when it's time for [bedtime].
   final String? bedtimeNotificationTitle;
 
   /// Body of the notification to be shown when it's time for [bedtime].
   final String? bedtimeNotificationBody;
+
+  /// The deep link to open when the bedtime notification is clicked.
+  final String? bedtimeDeepLinkUri;
 
   /// Whether to present an action button in the notification for `snooze'.
   final bool? snooze;
@@ -106,9 +109,10 @@ class AlarmSettings {
     hash = hash ^ enableNotificationOnKill.hashCode;
     hash = hash ^ stopOnNotificationOpen.hashCode;
     hash = hash ^ (bedtime?.hashCode ?? 0);
-    hash = hash ^ bedtimeAutoDissmiss.hashCode;
+    hash = hash ^ bedtimeAutoDismiss.hashCode;
     hash = hash ^ (bedtimeNotificationTitle?.hashCode ?? 0);
     hash = hash ^ (bedtimeNotificationBody?.hashCode ?? 0);
+    hash = hash ^ (bedtimeDeepLinkUri?.hashCode ?? 0);
     hash = hash ^ (snooze?.hashCode ?? 0);
     hash = hash ^ snoozeDuration.hashCode;
     hash = hash ^ (notificationActionSnoozeLabel?.hashCode ?? 0);
@@ -140,9 +144,10 @@ class AlarmSettings {
     this.enableNotificationOnKill = true,
     this.stopOnNotificationOpen = true,
     this.bedtime,
-    this.bedtimeAutoDissmiss = const Duration(hours: 2),
+    this.bedtimeAutoDismiss = const Duration(hours: 2),
     this.bedtimeNotificationTitle,
     this.bedtimeNotificationBody,
+    this.bedtimeDeepLinkUri,
     this.snooze,
     this.notificationActionSnoozeLabel,
     this.notificationActionDismissLabel,
@@ -152,7 +157,7 @@ class AlarmSettings {
   /// Constructs an `AlarmSettings` instance from the given JSON data.
   factory AlarmSettings.fromJson(Map<String, dynamic> json) => AlarmSettings(
         id: json['id'] as int,
-        dateTime: DateTime.fromMicrosecondsSinceEpoch(json['dateTime'] as int),
+        dateTime: DateTime.fromMillisecondsSinceEpoch(json['dateTime'] as int),
         originalTime: TimeOfDay(
           hour: json['originalHour'] as int,
           minute: json['originalMinute'] as int,
@@ -168,11 +173,12 @@ class AlarmSettings {
         enableNotificationOnKill: json['enableNotificationOnKill'] as bool,
         stopOnNotificationOpen: json['stopOnNotificationOpen'] as bool,
         bedtime: json['bedtime'] != null
-            ? DateTime.fromMicrosecondsSinceEpoch(json['bedtime'] as int)
+            ? DateTime.fromMillisecondsSinceEpoch(json['bedtime'] as int)
             : null,
-        bedtimeAutoDissmiss: Duration(seconds: json['bedtimeAutoDissmiss']),
+        bedtimeAutoDismiss: Duration(seconds: json['bedtimeAutoDismiss']),
         bedtimeNotificationTitle: json['bedtimeNotificationTitle'] as String?,
         bedtimeNotificationBody: json['bedtimeNotificationBody'] as String?,
+        bedtimeDeepLinkUri: json['bedtimeDeepLinkUri'] as String?,
         snooze: json['snooze'] as bool?,
         snoozeDuration: Duration(seconds: json['snoozeDuration']),
         notificationActionSnoozeLabel:
@@ -199,9 +205,10 @@ class AlarmSettings {
     bool? enableNotificationOnKill,
     bool? stopOnNotificationOpen,
     DateTime? bedtime,
-    Duration? bedtimeAutoDissmiss,
+    Duration? bedtimeAutoDismiss,
     String? bedtimeNotificationTitle,
     String? bedtimeNotificationBody,
+    String? bedtimeDeepLinkUri,
     bool? snooze,
     Duration? snoozeDuration,
     String? notificationActionSnoozeLabel,
@@ -225,11 +232,12 @@ class AlarmSettings {
       stopOnNotificationOpen:
           stopOnNotificationOpen ?? this.stopOnNotificationOpen,
       bedtime: bedtime ?? this.bedtime,
-      bedtimeAutoDissmiss: bedtimeAutoDissmiss ?? this.bedtimeAutoDissmiss,
+      bedtimeAutoDismiss: bedtimeAutoDismiss ?? this.bedtimeAutoDismiss,
       bedtimeNotificationTitle:
           bedtimeNotificationTitle ?? this.bedtimeNotificationTitle,
       bedtimeNotificationBody:
           bedtimeNotificationBody ?? this.bedtimeNotificationBody,
+      bedtimeDeepLinkUri: bedtimeDeepLinkUri ?? this.bedtimeDeepLinkUri,
       snooze: snooze ?? this.snooze,
       snoozeDuration: snoozeDuration ?? this.snoozeDuration,
       notificationActionSnoozeLabel:
@@ -243,7 +251,7 @@ class AlarmSettings {
   /// Converts this `AlarmSettings` instance to JSON data.
   Map<String, dynamic> toJson() => {
         'id': id,
-        'dateTime': dateTime.microsecondsSinceEpoch,
+        'dateTime': dateTime.millisecondsSinceEpoch,
         'originalHour': originalTime.hour,
         'originalMinute': originalTime.minute,
         'recurring': recurring,
@@ -256,10 +264,11 @@ class AlarmSettings {
         'notificationBody': notificationBody,
         'enableNotificationOnKill': enableNotificationOnKill,
         'stopOnNotificationOpen': stopOnNotificationOpen,
-        'bedtime': bedtime?.microsecondsSinceEpoch,
-        'bedtimeAutoDissmiss': bedtimeAutoDissmiss.inSeconds,
+        'bedtime': bedtime?.millisecondsSinceEpoch,
+        'bedtimeAutoDismiss': bedtimeAutoDismiss.inSeconds,
         'bedtimeNotificationTitle': bedtimeNotificationTitle,
         'bedtimeNotificationBody': bedtimeNotificationBody,
+        'bedtimeDeepLinkUri': bedtimeDeepLinkUri,
         'snooze': snooze,
         'snoozeDuration': snoozeDuration.inSeconds,
         'notificationActionSnoozeLabel': notificationActionSnoozeLabel,
@@ -271,16 +280,15 @@ class AlarmSettings {
   @override
   String toString() {
     Map<String, dynamic> json = toJson();
-    json['dateTime'] = DateTime.fromMicrosecondsSinceEpoch(json['dateTime']);
+    json['dateTime'] = DateTime.fromMillisecondsSinceEpoch(json['dateTime']);
     json['originalTime'] = TimeOfDay(
       hour: json['originalHour'] as int,
       minute: json['originalMinute'] as int,
     );
     json['bedtime'] = json['bedtime'] != null
-        ? DateTime.fromMicrosecondsSinceEpoch(json['bedtime'])
+        ? DateTime.fromMillisecondsSinceEpoch(json['bedtime'])
         : null;
-    json['bedtimeAutoDissmiss'] =
-        Duration(seconds: json['bedtimeAutoDissmiss']);
+    json['bedtimeAutoDismiss'] = Duration(seconds: json['bedtimeAutoDismiss']);
     json['snoozeDuration'] = Duration(seconds: json['snoozeDuration']);
 
     return "AlarmSettings: ${json.toString()}";
@@ -306,9 +314,10 @@ class AlarmSettings {
           enableNotificationOnKill == other.enableNotificationOnKill &&
           stopOnNotificationOpen == other.stopOnNotificationOpen &&
           bedtime == other.bedtime &&
-          bedtimeAutoDissmiss == other.bedtimeAutoDissmiss &&
+          bedtimeAutoDismiss == other.bedtimeAutoDismiss &&
           bedtimeNotificationTitle == other.bedtimeNotificationTitle &&
           bedtimeNotificationBody == other.bedtimeNotificationBody &&
+          bedtimeDeepLinkUri == other.bedtimeDeepLinkUri &&
           snooze == other.snooze &&
           snoozeDuration == other.snoozeDuration &&
           notificationActionSnoozeLabel ==
