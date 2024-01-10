@@ -19,8 +19,7 @@ allprojects {
         google()
         mavenCentral()
         maven {
-            url 'http://download.flutter.io'
-            allowInsecureProtocol=true
+            url 'https://storage.googleapis.com/download.flutter.io'
         }
     }
 }
