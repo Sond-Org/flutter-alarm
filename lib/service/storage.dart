@@ -1,125 +1,74 @@
-import 'dart:convert';
-
+import 'package:alarm/platform/android_alarm_storage.dart';
+import 'package:alarm/platform/base_alarm_storage.dart';
+import 'package:alarm/platform/ios_alarm_storage.dart';
 import 'package:alarm/service/alarm.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 
 /// Provides methods to interact with the native platform for caching alarms.
 class AlarmStorage {
-  static const platform = MethodChannel('com.gdelataillade.alarm/alarm');
+  static late BaseAlarmStorage platformSpecificStorage;
+  static bool ininitialized = false;
 
-  static const notificationOnAppKill = 'notificationOnAppKill';
-  static const notificationOnAppKillTitle = 'notificationOnAppKillTitle';
-  static const notificationOnAppKillBody = 'notificationOnAppKillBody';
+  static void init() {
+    if (ininitialized) {
+      return;
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      platformSpecificStorage = IOSAlarmStorage();
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      platformSpecificStorage = AndroidAlarmStorage();
+    } else {
+      throw UnimplementedError("Unsupported platform");
+    }
+
+    ininitialized = true;
+  }
 
   /// Saves alarm info in local storage so we can restore it later
   /// in the case app is terminated.
-  static Future<bool> saveAlarm(AlarmSettings alarmSettings) async {
-    try {
-      return await platform.invokeMethod('saveAlarm', alarmSettings.toJson());
-    } catch (e) {
-      throw AlarmException('Failed to save alarm ${alarmSettings.id}. $e');
-    }
+  static Future<bool> saveAlarm(AlarmSettings alarmSettings) {
+    init();
+    return platformSpecificStorage.saveAlarm(alarmSettings);
   }
 
   /// Removes alarm from local storage.
-  static Future<bool> unsaveAlarm(int id) async {
-    try {
-      return await platform.invokeMethod('unsaveAlarm', {'id': id});
-    } catch (e) {
-      throw AlarmException('Failed to unsave alarm $id. $e');
-    }
+  static Future<bool> unsaveAlarm(int id) {
+    init();
+    return platformSpecificStorage.unsaveAlarm(id);
   }
 
   /// Whether at least one alarm is set.
-  static Future<bool> hasAlarm() async {
-    try {
-      return await platform.invokeMethod('hasAlarm');
-    } catch (e) {
-      throw AlarmException(
-        'Failed to check if there is at least one alarm set. $e',
-      );
-    }
+  static Future<bool> hasAlarm() {
+    init();
+    return platformSpecificStorage.hasAlarm();
   }
 
   /// Returns all alarms info from local storage in the case app is terminated
   /// and we need to restore previously scheduled alarms.
-  static Future<List<AlarmSettings>> getSavedAlarms() async {
-    late final List<Object?>? rawAlarms;
-    try {
-      rawAlarms = await platform.invokeMethod<List<Object?>>('listAlarms');
-    } catch (e) {
-      throw AlarmException('Failed to list alarms. $e');
-    }
-
-    if (rawAlarms == null || rawAlarms.isEmpty) {
-      return [];
-    }
-
-    final alarms = <AlarmSettings>[];
-    for (final rawAlarm in rawAlarms) {
-      if (rawAlarm == null) continue;
-      late final Map<String, dynamic> jsonAlarm;
-      try {
-        jsonAlarm = json.decode(rawAlarm.toString());
-      } catch (e) {
-        alarmPrint(
-          '[STORAGE] Failed to parse alarm as json: $rawAlarm. $e',
-        );
-        continue;
-      }
-
-      try {
-        alarms.add(AlarmSettings.fromJson(jsonAlarm));
-      } catch (e) {
-        alarmPrint(
-          '[STORAGE] Failed to parse alarm $rawAlarm - removing alarm from storage. $e',
-        );
-        final id = jsonAlarm['id'];
-        if (id != null) {
-          unsaveAlarm(id);
-        }
-      }
-    }
-
-    return alarms;
+  static Future<List<AlarmSettings>> getSavedAlarms() {
+    init();
+    return platformSpecificStorage.getSavedAlarms();
   }
 
   /// Saves on app kill notification custom [title] and [body].
   static Future<bool> setNotificationContentOnAppKill(
     String title,
     String body,
-  ) async {
-    try {
-      return await platform.invokeMethod('setNotificationContentOnAppKill', {
-        'title': title,
-        'body': body,
-      });
-    } catch (e) {
-      throw AlarmException(
-        'Failed to set the title and body of the notification that shows when the app is killed. $e',
-      );
-    }
+  ) {
+    init();
+    return platformSpecificStorage.setNotificationContentOnAppKill(title, body);
   }
 
   /// Returns notification on app kill [title].
-  static Future<String> getNotificationOnAppKillTitle() async {
-    try {
-      return await platform.invokeMethod('getNotificationOnAppKillTitle');
-    } catch (e) {
-      throw AlarmException(
-        'Failed to get the title of the notification that shows when the app is killed. $e',
-      );
-    }
+  static Future<String> getNotificationOnAppKillTitle() {
+    init();
+    return platformSpecificStorage.getNotificationOnAppKillTitle();
   }
 
   /// Returns notification on app kill [body].
-  static Future<String> getNotificationOnAppKillBody() async {
-    try {
-      return await platform.invokeMethod('getNotificationOnAppKillBody');
-    } catch (e) {
-      throw AlarmException(
-        'Failed to get the body of the notification that shows when the app is killed. $e',
-      );
-    }
+  static Future<String> getNotificationOnAppKillBody() {
+    init();
+    return platformSpecificStorage.getNotificationOnAppKillBody();
   }
 }

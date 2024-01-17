@@ -68,6 +68,7 @@ class Alarm {
       throw UnimplementedError("Unsupported platform");
     }
 
+    AlarmStorage.init();
     await platformSpecificAlarm.init();
     await checkAlarm();
     _initialized = true;
