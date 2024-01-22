@@ -106,7 +106,7 @@ class AudioHandler(private val context: Context) {
         var volume = 0.0f
 
         while (volume <= maxVolume) {
-            if (!mediaPlayer.isPlaying) {
+            if (!mediaPlayers.containsValue(mediaPlayer) || !mediaPlayer.isPlaying) {
                 return
             }
 
@@ -119,12 +119,13 @@ class AudioHandler(private val context: Context) {
     }
 
     fun cleanUp() {
-        mediaPlayers.values.forEach { mediaPlayer ->
+        val players = mediaPlayers.values
+        mediaPlayers.clear()
+        players.forEach { mediaPlayer ->
             if (mediaPlayer.isPlaying) {
                 mediaPlayer.stop()
             }
             mediaPlayer.release()
         }
-        mediaPlayers.clear()
     }
 }
