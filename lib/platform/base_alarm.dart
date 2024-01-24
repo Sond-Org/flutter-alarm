@@ -122,7 +122,7 @@ abstract class BaseAlarm {
       }
     }
 
-    alarmPrint('Alarm with id ${settings.id} scheduled');
+    alarmPrint('Alarm with id ${settings.id} scheduled - ${settings.dateTime}');
     return true;
   }
 
