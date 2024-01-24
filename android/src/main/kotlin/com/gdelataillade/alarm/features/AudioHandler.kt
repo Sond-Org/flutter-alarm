@@ -3,7 +3,7 @@ package com.gdelataillade.alarm.features
 import android.content.Context
 import android.media.MediaPlayer
 import android.os.PowerManager
-import io.flutter.Log
+import com.gdelataillade.alarm.alarm.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

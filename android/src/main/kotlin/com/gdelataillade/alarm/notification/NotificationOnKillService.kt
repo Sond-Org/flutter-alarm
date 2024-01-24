@@ -12,7 +12,7 @@ import android.os.IBinder
 import android.provider.Settings
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import io.flutter.Log
+import com.gdelataillade.alarm.alarm.Log
 
 class NotificationOnKillService : Service() {
     private lateinit var title: String

@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
 import com.gdelataillade.alarm.utils.toJSONObject
-import io.flutter.Log
+import com.gdelataillade.alarm.alarm.Log
 import org.json.JSONObject
 
 class StorageHandler(private val context: Context) {

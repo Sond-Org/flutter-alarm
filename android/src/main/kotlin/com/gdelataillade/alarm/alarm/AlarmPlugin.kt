@@ -7,7 +7,6 @@ import com.gdelataillade.alarm.features.NotificationHandler
 import com.gdelataillade.alarm.features.StorageHandler
 import com.gdelataillade.alarm.reboot.RebootBroadcastReceiver
 import com.gdelataillade.alarm.utils.toBundle
-import io.flutter.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -24,7 +23,7 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
 
     companion object {
         @JvmStatic
-        lateinit var binaryMessenger: BinaryMessenger
+        var binaryMessenger: BinaryMessenger? = null
 
         @JvmStatic
         val CHANNEL_NAME = "com.gdelataillade.alarm/alarm"
@@ -33,7 +32,6 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
     override fun onAttachedToEngine(
         @NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding,
     ) {
-        Log.d("flutter/AlarmPlugin", "onAttachedToEngine")
         context = flutterPluginBinding.applicationContext
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, CHANNEL_NAME)
         channel.setMethodCallHandler(this)
@@ -42,6 +40,7 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
         storageHandler = StorageHandler(context)
         notificationHandler = NotificationHandler(context)
         RebootBroadcastReceiver.enableRescheduleOnReboot(context)
+        Log.d("flutter/AlarmPlugin", "onAttachedToEngine")
     }
 
     override fun onMethodCall(
@@ -147,6 +146,8 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
     override fun onDetachedFromEngine(
         @NonNull binding: FlutterPlugin.FlutterPluginBinding,
     ) {
+        binaryMessenger = null
+        Log.clearChannel()
         channel.setMethodCallHandler(null)
     }
 }

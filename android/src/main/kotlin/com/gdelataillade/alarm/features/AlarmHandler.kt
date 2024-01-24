@@ -16,7 +16,7 @@ import com.gdelataillade.alarm.notification.BedtimeNotificationReceiver
 import com.gdelataillade.alarm.utils.toBedtimeId
 import com.gdelataillade.alarm.utils.toBundle
 import com.gdelataillade.alarm.utils.toDateTimeString
-import io.flutter.Log
+import com.gdelataillade.alarm.alarm.Log
 import org.json.JSONObject
 
 class AlarmHandler(private val context: Context) {

@@ -5,7 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.util.Log
+import com.gdelataillade.alarm.alarm.Log
 import com.gdelataillade.alarm.features.AlarmHandler
 
 /**

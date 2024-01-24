@@ -16,43 +16,59 @@ abstract class BaseAlarm {
   }
 
   Future<dynamic> handleMethodCall(MethodCall call) async {
-    int id = call.arguments['id'];
-    final settings = await Alarm.getAlarm(id);
-    if (settings == null) {
-      alarmPrint(
-        'Handle method call "${call.method}" error: Alarm $id not found',
-      );
-      return;
-    }
-
-    try {
+    int? id = call.arguments['id'];
+    if (id == null) {
       switch (call.method) {
-        case 'alarmRinging':
-          alarmPrint('Alarm $id is ringing');
-          Alarm.ringStream.add(settings);
+        case 'logD':
+          alarmPrint('[NATIVE/DEBUG] ${call.arguments['message']}');
           break;
-
-        case 'alarmDismissed':
-          alarmPrint('Alarm $id stopped');
-          Alarm.alarmNotificationStream.add(
-            NotificationEvent(settings, NotificationAction.dismiss),
-          );
+        case 'logI':
+          alarmPrint('[NATIVE/INFO] ${call.arguments['message']}');
           break;
-
-        case 'alarmSnoozed':
-          alarmPrint('Alarm $id snoozed');
-          Alarm.alarmNotificationStream.add(
-            NotificationEvent(settings, NotificationAction.snooze),
-          );
+        case 'logW':
+          alarmPrint('[NATIVE/WARN] ${call.arguments['message']}');
           break;
-
-        default:
-          alarmPrint(
-            'Handle method call "${call.method}" error: Unknown method',
-          );
+        case 'logE':
+          alarmPrint('[NATIVE/ERROR] ${call.arguments['message']}');
+          break;
       }
-    } catch (e) {
-      alarmPrint('Handle method call "${call.method}" error: $e');
+    } else {
+      final settings = await Alarm.getAlarm(id);
+      if (settings == null) {
+        alarmPrint(
+          'Handle method call "${call.method}" error: Alarm $id not found',
+        );
+        return;
+      }
+
+      try {
+        switch (call.method) {
+          case 'alarmRinging':
+            alarmPrint('Alarm $id is ringing');
+            Alarm.ringStream.add(settings);
+            break;
+
+          case 'alarmDismissed':
+            alarmPrint('Alarm $id stopped');
+            Alarm.alarmNotificationStream.add(
+              NotificationEvent(settings, NotificationAction.dismiss),
+            );
+            break;
+
+          case 'alarmSnoozed':
+            alarmPrint('Alarm $id snoozed');
+            Alarm.alarmNotificationStream.add(
+              NotificationEvent(settings, NotificationAction.snooze),
+            );
+            break;
+          default:
+            alarmPrint(
+              'Handle method call "${call.method}" error: Unknown method',
+            );
+        }
+      } catch (e) {
+        alarmPrint('Handle method call "${call.method}" error: $e');
+      }
     }
   }
 
