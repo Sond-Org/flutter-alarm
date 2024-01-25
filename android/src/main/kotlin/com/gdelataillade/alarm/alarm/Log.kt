@@ -14,7 +14,7 @@ class Log {
             channel = null
         }
 
-        private fun log(method: String, tag: String, message: String, e: Exception? = null) {
+        private fun log(method: String, tag: String, message: String, e: Throwable? = null) {
             if (channel == null) {
                 AlarmPlugin.binaryMessenger?.let {
                     channel = MethodChannel(it, AlarmPlugin.CHANNEL_NAME)
@@ -43,36 +43,19 @@ class Log {
             channel?.invokeMethod(method, mapOf("message" to logMessage))
         }
 
-        fun d(tag: String, message: String) {
-            log("logD", tag, message)
-        }
-
-        fun d(tag: String, message: String, e: Exception) {
+        fun d(tag: String, message: String, e: Throwable? = null) {
             log("logD", tag, message, e)
         }
 
-        fun i(tag: String, message: String) {
-            log("logI", tag, message)
-        }
-
-        fun i(tag: String, message: String, e: Exception) {
+        fun i(tag: String, message: String, e: Throwable? = null) {
             log("logI", tag, message, e)
         }
 
-        fun w(tag: String, message: String) {
-            log("logW", tag, message)
-        }
-
-
-        fun w(tag: String, message: String, e: Exception) {
+        fun w(tag: String, message: String, e: Throwable? = null) {
             log("logW", tag, message, e)
         }
 
-        fun e(tag: String, message: String) {
-            log("logE", tag, message)
-        }
-
-        fun e(tag: String, message: String, e: Exception) {
+        fun e(tag: String, message: String, e: Throwable? = null) {
             log("logE", tag, message, e)
         }
     }
