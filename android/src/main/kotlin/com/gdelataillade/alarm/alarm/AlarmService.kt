@@ -13,7 +13,7 @@ import com.gdelataillade.alarm.features.StorageHandler
 import com.gdelataillade.alarm.features.VibrationHandler
 import com.gdelataillade.alarm.features.VolumeHandler
 import com.gdelataillade.alarm.utils.nextDateInMillis
-import io.flutter.Log
+import com.gdelataillade.alarm.alarm.Log
 import io.flutter.plugin.common.MethodChannel
 
 class AlarmService : Service() {
