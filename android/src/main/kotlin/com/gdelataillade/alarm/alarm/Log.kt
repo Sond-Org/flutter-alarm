@@ -1,5 +1,7 @@
 package com.gdelataillade.alarm.alarm
 
+import android.os.Handler
+import android.os.Looper
 import com.gdelataillade.alarm.alarm.AlarmPlugin
 import io.flutter.plugin.common.MethodChannel
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -9,6 +11,7 @@ class Log {
     companion object {
 
         private var channel: MethodChannel? = null
+        private val handler = Handler(Looper.getMainLooper())
 
         fun clearChannel() {
             channel = null
@@ -40,7 +43,9 @@ class Log {
                     "logE" -> io.flutter.Log.e(tag, message)
                 }
             }
-            channel?.invokeMethod(method, mapOf("message" to logMessage))
+            handler.post {
+                channel?.invokeMethod(method, mapOf("message" to logMessage))
+            }
         }
 
         fun d(tag: String, message: String, e: Throwable? = null) {
