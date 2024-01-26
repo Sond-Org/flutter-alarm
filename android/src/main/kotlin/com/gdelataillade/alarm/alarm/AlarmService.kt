@@ -285,7 +285,10 @@ class AlarmService : Service() {
         id: Int,
     ) {
         try {
-            channel?.invokeMethod(method, mapOf("id" to id))
+            if (!channelInitialized) {
+                initChannel();
+            }
+            channel.invokeMethod(method, mapOf("id" to id))
         } catch (e: Exception) {
             Log.d("flutter/AlarmService", "Error while invoking $method channel: $e")
         }
