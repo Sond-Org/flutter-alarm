@@ -85,13 +85,15 @@ class AudioHandler(private val context: Context) {
     }
 
     fun stopAudio(id: Int) {
-        mediaPlayers[id]?.apply {
+        val mediaPlayer = mediaPlayers[id]
+        mediaPlayers.remove(id)
+        mediaPlayer?.apply {
             if (isPlaying) {
                 stop()
             }
             release()
         }
-        mediaPlayers.remove(id)
+        
     }
 
     private suspend fun startFadeIn(
@@ -105,16 +107,20 @@ class AudioHandler(private val context: Context) {
         val deltaVolume = maxVolume / numberOfSteps
         var volume = 0.0f
 
-        while (volume <= maxVolume) {
-            if (!mediaPlayers.containsValue(mediaPlayer) || !mediaPlayer.isPlaying) {
-                return
-            }
+        try {
+            while (volume <= maxVolume) {
+                if (!mediaPlayers.containsValue(mediaPlayer) || !mediaPlayer.isPlaying) {
+                    return
+                }
 
-            val scaledVolume = 1 - log(1 + (1 - volume) * 9, 10.0f)
-            Log.d("flutter/AlarmPlugin", "Fade in volume: $scaledVolume")
-            mediaPlayer.setVolume(scaledVolume, scaledVolume)
-            volume += deltaVolume
-            delay(fadeInterval)
+                val scaledVolume = 1 - log(1 + (1 - volume) * 9, 10.0f)
+                Log.d("flutter/AlarmPlugin", "Fade in volume: $scaledVolume")
+                mediaPlayer.setVolume(scaledVolume, scaledVolume)
+                volume += deltaVolume
+                delay(fadeInterval)
+            }
+        } catch (e: Exception) {
+            Log.e("flutter/AlarmPlugin", "Error in startFadeIn: ${e.message}")
         }
     }
 
