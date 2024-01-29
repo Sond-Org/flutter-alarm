@@ -10,7 +10,7 @@
     <receiver android:name=".notification.BedtimeNotificationReceiver" android:exported="false"/>
     <receiver android:name=".alarm.AlarmReceiver" android:exported="false"/>
     <service android:name=".alarm.AlarmService" android:exported="false"/>
-    <receiver android:name="reboot.RebootBroadcastReceiver"
+    <receiver android:name=".reboot.RebootBroadcastReceiver"
             android:exported="false">
         <intent-filter>
             <action android:name="android.intent.action.BOOT_COMPLETED" />
