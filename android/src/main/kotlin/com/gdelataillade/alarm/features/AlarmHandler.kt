@@ -130,20 +130,16 @@ class AlarmHandler(private val context: Context) {
             )
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            val pendingOpenAppIntent =
-                PendingIntent.getActivity(
-                    context,
-                    0,
-                    openAppIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                )
-            val info = AlarmManager.AlarmClockInfo(scheduleTime, pendingOpenAppIntent)
-            alarmManager.setAlarmClock(info, pendingIntent)
-        } else {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, scheduleTime, pendingIntent)
-        }
+        val openAppIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        val pendingOpenAppIntent =
+            PendingIntent.getActivity(
+                context,
+                0,
+                openAppIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        val info = AlarmManager.AlarmClockInfo(scheduleTime, pendingOpenAppIntent)
+        alarmManager.setAlarmClock(info, pendingIntent)
     }
 
     fun stopAlarm(id: Int) {

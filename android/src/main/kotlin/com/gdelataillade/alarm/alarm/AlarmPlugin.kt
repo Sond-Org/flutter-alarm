@@ -114,6 +114,7 @@ class AlarmPlugin : FlutterPlugin, MethodCallHandler {
             }
             "unsaveAlarm" -> {
                 val id = call.argument<Int>("id")!!
+                alarmHandler.stopAlarm(id)
                 storageHandler.deleteAlarm(id)
                 result.success(true)
             }
