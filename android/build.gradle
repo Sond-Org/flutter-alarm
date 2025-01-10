@@ -1,4 +1,4 @@
-group 'com.gdelataillade.alarm.alarm'
+group 'com.gdelataillade.alarm'
 version '1.0-SNAPSHOT'
 
 buildscript {
